@@ -56,6 +56,22 @@ outputs/
 *.tmp
 .cache/
 
+# Non-runtime directories
+plans/
+.claude/
+docs/
+tests/
+finetune/
+client/
+examples/
+
+# Non-runtime files
+Makefile
+*.bat
+*.md
+!README.md
+!README_PYPI.md
+
 
 
 

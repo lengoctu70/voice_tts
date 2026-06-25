@@ -209,18 +209,18 @@ Input Text
 
 ### V3 Turbo Transformer Architecture
 
-**File**: `src/vieneu/_v3_turbo_engine/modeling_v3_turbo.py` (248 LOC)
+**File**: `src/vieneu/_v3_turbo_engine/modeling_v3_turbo.py` (~248 LOC)
 
 ```
 Input: Phoneme IDs (batch, seq_len)
     ↓
 [Embedding Layer]
 ├─ Phoneme embedding: (seq_len) → (seq_len, 768)
-├─ Speaker embedding: speaker_token → (1, 768)
+├─ Speaker embedding: speaker_token (reserved IDs 13–42) → (1, 768)
 └─ Emotion embedding: emotion_id → (1, 768)
     ↓
-[Stack of Transformer Layers (default: 8)]
-├─ Layer 1-8: (seq_len, 768)
+[Stack of Transformer Layers (default: 12)]
+├─ Layer 1-12: (seq_len, 768)
 │  ├─ MultiHeadSelfAttention(heads=8, hidden=768)
 │  │  └─ Causal masking (AR generation)
 │  ├─ FeedForward(hidden=768, ffn=3072)
@@ -236,8 +236,8 @@ Output: Acoustic codes [shape: (seq_len, codec_dim)]
 
 **Key Design Choices**:
 - **Causal masking**: Auto-regressive generation (left-to-right)
-- **Speaker token**: Learnable embedding for each default voice (no reference needed)
-- **Emotion embedding**: Discretized emotion tags mapped to learned vectors
+- **Speaker tokens**: Reserved IDs 13–42 for built-in voices (Bình An, Ngọc Linh, etc.)
+- **Emotion embedding**: Discretized emotion tags mapped to learned vectors (experimental)
 - **No cross-attention**: v3 uses concatenated embeddings (simpler, faster)
 
 ### ONNX Runtime Selection (onnx_runtime_lite.py)
@@ -575,36 +575,37 @@ class BaseVieneuTTS:
 4. Save: `tts.save(audio, path)`
 5. Cleanup: automatic (no explicit context manager needed)
 
-## Streaming Architecture (Experimental, v3 Turbo)
+## Streaming Architecture (Experimental)
+
+### Streaming Support
+
+**v2 Standard & v2 Turbo**: Full streaming support (stable, production-ready)
+
+**v3 Turbo**: Experimental streaming via FastAPI (`vieneu-stream`). Chunked text → audio chunks → real-time playback.
 
 ### Streaming Inference Path
 
 ```
 [Long text]
     ↓
-[Chunked streaming]
-├─ Chunk 1 (256 chars)
-│   ↓ infer + stream
+[Chunked streaming] (256 chars per chunk)
+├─ Chunk 1
+│   ↓ infer
 │   → audio chunk 1
 │
-├─ Chunk 2 (256 chars)
-│   ↓ infer + stream
+├─ Chunk 2
+│   ↓ infer
 │   → audio chunk 2
 │
 └─ Chunk N
-    ↓ infer + stream
+    ↓ infer
     → audio chunk N
     ↓
 [Join chunks with overlap]
-└─ Smooth transitions
+└─ Smooth transitions (1–2 frame overlap)
     ↓
 [Stream to client in real-time]
 ```
-
-**Parameters** (base.py:streaming_*):
-- `streaming_overlap_frames = 1` — Overlap for smoothing
-- `streaming_frames_per_chunk = 50` — Frames per network send
-- `streaming_stride_samples = hop_length * frames_per_chunk`
 
 **Latency**: ~50–100ms time-to-first-chunk
 

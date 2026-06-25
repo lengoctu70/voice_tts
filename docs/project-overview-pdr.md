@@ -14,8 +14,8 @@
 
 ## Target Users
 
-1. **Researchers**: Phoneme-level control, emotion tagging (experimental), batched generation for dataset synthesis
-2. **Developers**: SDK integration into apps/services; Python ≥3.10 requirement; optional GPU (CUDA 12.8+, Apple MPS)
+1. **Researchers**: Phoneme-level control, emotion tagging (implemented, experimental stage), batched generation for dataset synthesis
+2. **Developers**: SDK integration into apps/services; Python ≥3.10 requirement; optional GPU (CUDA ≥12.8, Apple MPS)
 3. **Podcasters & Content Creators**: Podcast/conversation mode with multi-speaker dialogue, voice cloning for character voices
 4. **Edge/IoT Deployments**: CPU-ONNX path for latency-critical applications
 
@@ -28,15 +28,16 @@
 | **v1 Legacy** | NeuCodec | 24 kHz | GPU (PyTorch) | Stable baseline | **Stable** |
 
 ### VieNeu-TTS v3 Turbo (Early Access)
-- **Architecture**: Custom transformer backbone with speaker tokens for default voices
-- **Audio Quality**: 48 kHz high-fidelity waveforms
+- **Architecture**: Custom transformer backbone (12 layers, 768 hidden) with speaker tokens (reserved IDs 13–42) for default voices
+- **Audio Quality**: 48 kHz high-fidelity waveforms via MOSS-Audio-Tokenizer-Nano codec
 - **Features**:
   - Built-in default voices (Bình An, Ngọc Linh, Xuân Vĩnh, etc.) — no reference clip needed
-  - Voice cloning from 3–5s reference audio
-  - Emotion/non-verbal cues: `[cười]` (laugh), `[thở dài]` (sigh), `[hắng giọng]` (throat clear)
+  - Voice cloning from 3–5s reference audio (all voices)
+  - Emotion/non-verbal cues (experimental): `[cười]` (laugh), `[thở dài]` (sigh), `[hắng giọng]` (throat clear)
   - Batched generation (up to 32 samples per batch)
   - Multi-speaker conversation mode
 - **Inference Path**: CPU → ONNX Runtime (torch-free); GPU → PyTorch (auto-detected)
+- **Streaming**: Experimental via FastAPI (`vieneu-stream`)
 - **Timeline**: Full v3 release planned for next few weeks
 
 ### VieNeu-TTS v2 Standard

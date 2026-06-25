@@ -176,7 +176,7 @@ vieneu-stream
 - Chunked audio streaming (real-time playback)
 - Supports CPU & GPU backends
 - Lightweight (minimal overhead)
-- Compatible with v3 Turbo & v2 models
+- Compatible with v2 models (stable); v3 Turbo streaming experimental
 
 ### Usage from Client
 

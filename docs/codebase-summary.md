@@ -57,8 +57,8 @@ Vieneu(mode="v3turbo", **kwargs)  # Returns appropriate engine instance
 
 **Codec Loading**:
 - Detects ONNX vs PyTorch codecs automatically
-- v3 Turbo skips codec_repo (uses MOSS internally)
-- Fallback: librosa (if [gpu] installed) → soundfile + soxr (core)
+- v3 Turbo uses MOSS-Audio-Tokenizer-Nano codec (no separate codec_repo)
+- Fallback for reference loading: librosa (if [gpu]) → soundfile + soxr (core)
 
 ### VieNeu-TTS v3 Turbo (v3turbo.py, 245 LOC)
 **Purpose**: Default high-speed 48 kHz engine; CPU via ONNX Runtime, GPU via PyTorch.
@@ -152,24 +152,23 @@ tts = Vieneu(mode="xpu")  # Auto-detects Intel GPU
 
 ## V3 Turbo Engine: `src/vieneu/_v3_turbo_engine/` (1095 LOC)
 
-### Configuration (configuration_v3_turbo.py, 44 LOC)
-- Transformer config: 8 layers, 768 hidden, 3072 FFN, 8 heads
+### Configuration (configuration_v3_turbo.py, ~44 LOC)
+- Transformer config: 12 layers, 768 hidden, 3072 FFN, 8 heads
 - Embedding dims, dropout rates, layer normalization params
 
-### Modeling (modeling_v3_turbo.py, 248 LOC)
+### Modeling (modeling_v3_turbo.py, ~248 LOC)
 **Transformer Architecture**:
-- `V3TurboTransformer` — Main backbone with speaker token embedding
+- `V3TurboTransformer` — Main backbone with speaker token embedding (reserved IDs 13–42 for default voices)
 - Self-attention layers with causal masking (for AR generation)
-- Cross-attention for conditional synthesis
-- Speaker embedding projection
+- Speaker embedding projection; emotion tag integration
+- No explicit cross-attention (embeddings concatenated)
 
 **Key Classes**:
 - `SelfAttention` — Multi-head self-attention
-- `CrossAttention` — Speaker/emotion embedding fusion
 - `FeedForward` — Position-wise MLP
-- `TransformerLayer` — Single encoder/decoder block
+- `TransformerLayer` — Single encoder/decoder block with residuals
 
-### Inference (inference_v3_turbo.py, 396 LOC)
+### Inference (inference_v3_turbo.py, ~396 LOC)
 **Purpose**: Orchestrate v3 Turbo inference (PyTorch path).
 
 **Key Methods**:
@@ -178,34 +177,34 @@ tts = Vieneu(mode="xpu")  # Auto-detects Intel GPU
 - `infer_batch()` — Batched inference for efficiency
 
 **Features**:
-- Speaker token embedding for built-in voices
-- Emotion tag embedding (experimental)
+- Speaker token embedding for built-in voices (ID 13–42 reserved)
+- Emotion tag embedding (experimental): `[cười]`, `[thở dài]`, `[hắng giọng]`
 - KV cache for efficient inference
 - Temperature & top-k sampling
 
-### ONNX Runtime (onnx_runtime_lite.py, 306 LOC)
+### ONNX Runtime (onnx_runtime_lite.py, ~306 LOC)
 **Purpose**: Lightweight ONNX Runtime wrapper for CPU inference (torch-free).
 
 **Classes**:
-- `ONNXRuntimeLite` — Session manager with optimized providers
-- Provider selection: CPU → ONNX Best, GPU CUDA → TensorrtExecutionProvider
+- `ONNXRuntimeLite` — Session manager with optimized provider selection
+- Provider fallback: TensorRT → CUDA → CPU
 
 **Key Methods**:
 - `load_model(model_path)` → Load .onnx files
 - `run(input_dict)` → Execute inference
 - `get_providers()` → List available acceleration backends
 
-### Prompt Engineering (prompt_v3_turbo.py, 22 LOC)
-**Purpose**: Speaker & emotion prompt templates (minimal).
+### Prompt Engineering (prompt_v3_turbo.py, ~22 LOC)
+**Purpose**: Speaker & emotion prompt templates.
 
-- Default speaker IDs mapping
-- Emotion tag definitions
+- Default speaker ID mapping (Bình An, Ngọc Linh, Xuân Vĩnh, etc.)
+- Emotion tag definitions (reserved codes)
 
-### Hub Loading (hub_load_v3_turbo.py, 49 LOC)
+### Hub Loading (hub_load_v3_turbo.py, ~49 LOC)
 **Purpose**: Download & cache models from Hugging Face.
 
 - Detects model type (ONNX vs PyTorch)
-- Falls back to ONNX on CPU if PyTorch unavailable
+- Auto-selects ONNX on CPU if torch unavailable
 - Respects `HF_TOKEN` for gated models
 
 ## V3 Turbo Serving: `src/vieneu/v3_turbo_serve/` (376 LOC)

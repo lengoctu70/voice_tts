@@ -36,6 +36,7 @@ class ChunkLog:
     retries: int = 0
     trim_lead_ms: int = 0
     trim_trail_ms: int = 0
+    silence_sacrificed_ms: int = 0
     pad_ms: int = 0
     speedup: float = 1.0
     cut_ms: int = 0
@@ -58,17 +59,23 @@ def _fmt_ts(s: float) -> str:
 
 def format_chunk_log(log: ChunkLog) -> str:
     """One concise line per block, suitable for the UI status area."""
-    return (
-        f"Khối {log.index:02d} "
-        f"[{_fmt_ts(log.start_s)}→{_fmt_ts(log.end_s)}] "
-        f"retries={log.retries} "
-        f"trim={log.trim_lead_ms}/{log.trim_trail_ms}ms "
-        f"pad={log.pad_ms}ms "
-        f"speedup={log.speedup:.2f}x "
-        f"cut={log.cut_ms}ms "
-        f"{log.status}"
-        + (f" ({log.failure_reason})" if log.failure_reason else "")
-    )
+    parts = [
+        f"Khối {log.index:02d} ",
+        f"[{_fmt_ts(log.start_s)}→{_fmt_ts(log.end_s)}] ",
+        f"retries={log.retries} ",
+        f"trim={log.trim_lead_ms}/{log.trim_trail_ms}ms ",
+    ]
+    if log.silence_sacrificed_ms:
+        parts.append(f"sil_cut={log.silence_sacrificed_ms}ms ")
+    parts += [
+        f"pad={log.pad_ms}ms ",
+        f"speedup={log.speedup:.2f}x ",
+        f"cut={log.cut_ms}ms ",
+        log.status,
+    ]
+    if log.failure_reason:
+        parts.append(f" ({log.failure_reason})")
+    return "".join(parts)
 
 
 def synthesize_srt(
@@ -128,23 +135,24 @@ def synthesize_srt(
                 block=block.index,
             )
 
-        # Edge-silence trim.
-        trimmed, lead, trail = trim_edge_silence(wav, sr)
+        # Edge-silence trim (preserves natural padding).
+        trimmed, lead, trail, lead_pad, trail_pad = trim_edge_silence(wav, sr)
         log.trim_lead_ms = int(round(lead / sr * 1000))
         log.trim_trail_ms = int(round(trail / sr * 1000))
 
-        # Fit to window.
-        input_dur = len(trimmed) / float(sr)
-        fitted, applied_speedup, was_cut = fit_to_window(
-            trimmed, target_dur_s=target_dur, sr=sr, max_speedup=max_speedup
+        # Fit to window (sacrifices silence padding before speedup/cut).
+        fitted, applied_speedup, was_cut, sil_trimmed = fit_to_window(
+            trimmed, target_dur_s=target_dur, sr=sr, max_speedup=max_speedup,
+            lead_pad_samples=lead_pad, trail_pad_samples=trail_pad,
         )
         log.speedup = float(applied_speedup)
+        log.silence_sacrificed_ms = int(round(sil_trimmed / sr * 1000))
 
-        if input_dur < target_dur:
-            log.pad_ms = int(round((target_dur - input_dur) * 1000))
+        effective_dur = (len(trimmed) - sil_trimmed) / float(sr)
+        if effective_dur < target_dur:
+            log.pad_ms = int(round((target_dur - effective_dur) * 1000))
         if was_cut:
-            # cut in milliseconds = total stretched dur after max speedup minus target.
-            stretched_dur = input_dur / max_speedup
+            stretched_dur = effective_dur / max_speedup
             log.cut_ms = max(0, int(round((stretched_dur - target_dur) * 1000)))
 
         # Status: cut > retried > ok.

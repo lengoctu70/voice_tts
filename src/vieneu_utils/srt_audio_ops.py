@@ -44,36 +44,54 @@ def trim_edge_silence(
     *,
     threshold_db: float = -45.0,
     min_keep_ms: int = 20,
-) -> tuple[np.ndarray, int, int]:
-    """Trim silence at the start and end. Preserves internal silence.
+    preserve_lead_ms: int = 50,
+    preserve_trail_ms: int = 150,
+) -> tuple[np.ndarray, int, int, int, int]:
+    """Trim silence at the start and end, preserving a natural padding.
 
-    Returns (trimmed_wav, lead_samples_trimmed, trail_samples_trimmed).
+    Returns (trimmed_wav, lead_samples_trimmed, trail_samples_trimmed,
+             lead_pad_samples, trail_pad_samples).
+    The last two values are the preserved silence padding included in
+    trimmed_wav that can be sacrificed before resorting to speedup.
     """
     if wav.size == 0:
-        return wav.astype(np.float32, copy=False), 0, 0
+        return wav.astype(np.float32, copy=False), 0, 0, 0, 0
 
     frame_len = max(1, int(0.010 * sr))  # 10 ms
     rms, _ = _frame_rms(wav, frame_len)
     if rms.size == 0:
-        return wav.astype(np.float32, copy=False), 0, 0
+        return wav.astype(np.float32, copy=False), 0, 0, 0, 0
 
     peak_rms = float(rms.max())
     thresh = max(peak_rms * (10.0 ** (threshold_db / 20.0)), 1e-4)
 
     above = np.where(rms > thresh)[0]
     if above.size == 0:
-        # All silence; keep the whole thing (caller decides what to do).
-        return wav.astype(np.float32, copy=False), 0, 0
+        return wav.astype(np.float32, copy=False), 0, 0, 0, 0
 
     first_frame = int(above[0])
     last_frame = int(above[-1])
     keep_margin = max(0, int(round(min_keep_ms / 1000.0 * sr)))
 
-    lead = max(0, first_frame * frame_len - keep_margin)
-    trail_end = min(len(wav), (last_frame + 1) * frame_len + keep_margin)
+    # Voice boundary (with min_keep_ms safety margin).
+    voice_start = max(0, first_frame * frame_len - keep_margin)
+    voice_end = min(len(wav), (last_frame + 1) * frame_len + keep_margin)
+
+    # Natural padding: extend beyond voice boundary, capped by original bounds.
+    lead_pad_samples = min(
+        voice_start,
+        max(0, int(round(preserve_lead_ms / 1000.0 * sr))),
+    )
+    trail_pad_samples = min(
+        len(wav) - voice_end,
+        max(0, int(round(preserve_trail_ms / 1000.0 * sr))),
+    )
+
+    lead = voice_start - lead_pad_samples
+    trail_end = voice_end + trail_pad_samples
 
     trimmed = wav[lead:trail_end].astype(np.float32, copy=False)
-    return trimmed, lead, len(wav) - trail_end
+    return trimmed, lead, len(wav) - trail_end, lead_pad_samples, trail_pad_samples
 
 
 def _time_stretch(y: np.ndarray, rate: float) -> np.ndarray:
@@ -143,34 +161,55 @@ def fit_to_window(
     sr: int,
     *,
     max_speedup: float = 1.25,
-) -> tuple[np.ndarray, float, bool]:
+    lead_pad_samples: int = 0,
+    trail_pad_samples: int = 0,
+) -> tuple[np.ndarray, float, bool, int]:
     """Fit a waveform to an exact target duration.
 
-    Rules:
+    Priority order when audio is too long:
+      0. trim sacrificable silence padding — trail first (less perceptually
+         important), then lead — before degrading voice quality.
       1. shorter or within +1 ms → pad with trailing silence.
       2. longer but needed_speedup ≤ max_speedup → time-stretch to fit.
       3. longer beyond cap → stretch at max_speedup then hard-cut.
 
-    Returns (fitted_wav, applied_speedup, was_cut).
+    Returns (fitted_wav, applied_speedup, was_cut, silence_trimmed_samples).
     """
     target_len = int(round(target_dur_s * sr))
     if target_len <= 0:
-        return np.zeros(0, dtype=np.float32), 1.0, False
+        return np.zeros(0, dtype=np.float32), 1.0, False, 0
 
     wav = wav.astype(np.float32, copy=False)
-    input_dur = len(wav) / float(sr)
     tol = 1e-3  # 1 ms
+    silence_trimmed = 0
 
+    # Step 0: progressively sacrifice silence padding before degrading voice.
+    input_dur = len(wav) / float(sr)
+    if input_dur > target_dur_s + tol and trail_pad_samples > 0:
+        excess_samples = int(round((input_dur - target_dur_s) * sr))
+        trim_trail = min(trail_pad_samples, excess_samples)
+        wav = wav[: len(wav) - trim_trail]
+        silence_trimmed += trim_trail
+
+    input_dur = len(wav) / float(sr)
+    if input_dur > target_dur_s + tol and lead_pad_samples > 0:
+        excess_samples = int(round((input_dur - target_dur_s) * sr))
+        trim_lead = min(lead_pad_samples, excess_samples)
+        wav = wav[trim_lead:]
+        silence_trimmed += trim_lead
+
+    # Re-evaluate after silence trimming.
+    input_dur = len(wav) / float(sr)
     if input_dur <= target_dur_s + tol:
-        return _pad_or_trim_exact(wav, target_len), 1.0, False
+        return _pad_or_trim_exact(wav, target_len), 1.0, False, silence_trimmed
 
     needed_speedup = input_dur / target_dur_s
     if needed_speedup <= max_speedup + 1e-6:
         stretched = _time_stretch(wav, needed_speedup)
-        return _pad_or_trim_exact(stretched, target_len), float(needed_speedup), False
+        return _pad_or_trim_exact(stretched, target_len), float(needed_speedup), False, silence_trimmed
 
     stretched = _time_stretch(wav, max_speedup)
-    return _pad_or_trim_exact(stretched, target_len), float(max_speedup), True
+    return _pad_or_trim_exact(stretched, target_len), float(max_speedup), True, silence_trimmed
 
 
 def assemble_timeline(

@@ -65,7 +65,7 @@
 **Planned for Full Release** (next few weeks):
 - [ ] Finalize emotion control quality & stability
 - [ ] Expand default speaker library (10+ voices)
-- [ ] Streaming server support (vieneu-stream compatibility)
+- [ ] Stabilize experimental streaming support (vieneu-stream compatibility)
 - [ ] Comprehensive testing across hardware platforms
 - [ ] Production API stability guarantees
 - [ ] Detailed emotion documentation & guidelines

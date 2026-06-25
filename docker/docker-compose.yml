@@ -58,8 +58,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.gpu
-      target: dev
-    container_name: vieneu-tts-gpu-dev
+      target: prod
+    container_name: vieneu-tts-gpu
     environment:
       - PORT=${PORT:-7860}
       - GRADIO_SERVER_PORT=${GRADIO_SERVER_PORT:-7860}

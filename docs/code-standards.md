@@ -2,7 +2,7 @@
 
 ## Python Version & Environment
 
-- **Minimum Python**: 3.10 (3.11, 3.12, 3.13 tested and supported)
+- **Minimum Python**: ≥3.10 (3.10, 3.11, 3.12, 3.13 all tested and supported)
 - **Dependency Management**: `uv` (preferred) or `pip`
 - **Virtual Environments**: uv manages automatically; manual venv supported
 

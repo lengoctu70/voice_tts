@@ -45,26 +45,50 @@ def test_trim_edge_silence_keeps_inner_gap():
             _silence(0.2),
         ]
     )
-    trimmed, lead, trail = trim_edge_silence(signal, SR)
+    trimmed, lead, trail, lead_pad, trail_pad = trim_edge_silence(
+        signal, SR, preserve_lead_ms=0, preserve_trail_ms=0,
+    )
     assert lead > int(0.15 * SR)
     assert trail > int(0.15 * SR)
+    assert lead_pad == 0
+    assert trail_pad == 0
     # inner gap preserved -> trimmed length is roughly 0.25s (two tones + inner gap)
     assert abs(len(trimmed) - int(0.25 * SR)) < int(0.05 * SR)
 
 
+def test_trim_edge_silence_preserves_padding():
+    signal = np.concatenate(
+        [
+            _silence(0.2),
+            _tone(0.1),
+            _silence(0.2),
+        ]
+    )
+    trimmed, lead, trail, lead_pad, trail_pad = trim_edge_silence(
+        signal, SR, preserve_lead_ms=50, preserve_trail_ms=150,
+    )
+    expected_lead_pad = int(round(0.050 * SR))
+    expected_trail_pad = int(round(0.150 * SR))
+    assert lead_pad == expected_lead_pad
+    assert trail_pad == expected_trail_pad
+    assert lead > 0
+    assert trail > 0
+
+
 def test_fit_to_window_pads_short():
     inp = _tone(0.5)
-    out, speedup, was_cut = fit_to_window(inp, target_dur_s=2.0, sr=SR)
+    out, speedup, was_cut, sil_trimmed = fit_to_window(inp, target_dur_s=2.0, sr=SR)
     assert len(out) == int(round(2.0 * SR))
     assert speedup == pytest.approx(1.0)
     assert was_cut is False
+    assert sil_trimmed == 0
     # Tail must be silence after the tone.
     assert np.all(np.abs(out[int(0.55 * SR):]) < 1e-6)
 
 
 def test_fit_to_window_speedup_within_cap():
     inp = _tone(1.10)
-    out, speedup, was_cut = fit_to_window(inp, target_dur_s=1.0, sr=SR)
+    out, speedup, was_cut, _ = fit_to_window(inp, target_dur_s=1.0, sr=SR)
     assert len(out) == int(round(1.0 * SR))
     assert speedup == pytest.approx(1.10, abs=0.02)
     assert speedup <= 1.25 + 1e-6
@@ -73,7 +97,7 @@ def test_fit_to_window_speedup_within_cap():
 
 def test_fit_to_window_cut_beyond_cap():
     inp = _tone(1.5)
-    out, speedup, was_cut = fit_to_window(inp, target_dur_s=1.0, sr=SR)
+    out, speedup, was_cut, _ = fit_to_window(inp, target_dur_s=1.0, sr=SR)
     assert len(out) == int(round(1.0 * SR))
     assert speedup == pytest.approx(1.25, abs=1e-6)
     assert was_cut is True
@@ -81,9 +105,44 @@ def test_fit_to_window_cut_beyond_cap():
 
 def test_fit_to_window_borderline_no_op():
     inp = _tone(1.0)
-    out, speedup, was_cut = fit_to_window(inp, target_dur_s=1.0, sr=SR)
+    out, speedup, was_cut, _ = fit_to_window(inp, target_dur_s=1.0, sr=SR)
     assert len(out) == int(round(1.0 * SR))
     assert speedup == pytest.approx(1.0, abs=1e-6)
+    assert was_cut is False
+
+
+def test_fit_to_window_sacrifices_silence_before_speedup():
+    """When audio has padding silence and is slightly too long, silence is
+    trimmed first and no speedup is applied."""
+    tone = _tone(1.0)
+    pad_trail = _silence(0.1)
+    inp = np.concatenate([tone, pad_trail])
+    # 1.1s audio, 1.0s target, 0.1s trail padding available.
+    out, speedup, was_cut, sil_trimmed = fit_to_window(
+        inp, target_dur_s=1.0, sr=SR,
+        trail_pad_samples=len(pad_trail),
+    )
+    assert len(out) == int(round(1.0 * SR))
+    assert speedup == pytest.approx(1.0)
+    assert was_cut is False
+    assert sil_trimmed == len(pad_trail)
+
+
+def test_fit_to_window_partial_silence_then_speedup():
+    """When sacrificing all silence still leaves audio too long, it trims
+    silence first then applies minimal speedup."""
+    tone = _tone(1.2)
+    pad_trail = _silence(0.1)
+    inp = np.concatenate([tone, pad_trail])
+    # 1.3s audio, 1.0s target, only 0.1s trail padding.
+    out, speedup, was_cut, sil_trimmed = fit_to_window(
+        inp, target_dur_s=1.0, sr=SR,
+        trail_pad_samples=len(pad_trail),
+    )
+    assert len(out) == int(round(1.0 * SR))
+    assert sil_trimmed == len(pad_trail)
+    # After trimming 0.1s silence, 1.2s remains -> speedup ~1.2.
+    assert speedup == pytest.approx(1.2, abs=0.02)
     assert was_cut is False
 
 

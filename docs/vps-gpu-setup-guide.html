@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hướng dẫn thiết lập VieNeu-TTS trên VPS GPU</title>
+  
+  <!-- Import Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #090a10;
+      --surface: rgba(17, 20, 36, 0.7);
+      --surface-raised: rgba(26, 30, 54, 0.9);
+      --border: rgba(99, 102, 241, 0.12);
+      --border-focus: rgba(99, 102, 241, 0.4);
+      --text: #e2e8f0;
+      --text-muted: #8b9bb4;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --cyan: #06b6d4;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.08);
+      --warn: #f59e0b;
+      --warn-glow: rgba(245, 158, 11, 0.08);
+      --code-bg: #0b0c14;
+      
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-display: 'Outfit', sans-serif;
+      --font-mono: 'Fira Code', ui-monospace, monospace;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: radial-gradient(circle at 50% 0%, #14172a 0%, #08090f 100%);
+      background-attachment: fixed;
+      color: var(--text);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 6rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Mobile Progress Bar */
+    .mobile-progress-bar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 52px;
+      background: rgba(11, 12, 21, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      border-bottom: 1px solid var(--border);
+    }
+    .mobile-progress-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      padding: 0 1rem;
+    }
+    .mobile-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #fff;
+    }
+    .mobile-logo svg {
+      color: var(--accent);
+    }
+    .mobile-progress-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .mobile-menu-toggle {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mobile-progress-track {
+      height: 4px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      position: absolute;
+      bottom: 0;
+    }
+    .mobile-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--cyan) 100%);
+      width: 0%;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Sidebar Layout */
+    .sidebar {
+      width: 100%;
+      margin-bottom: 2.5rem;
+    }
+    
+    .sidebar-sticky {
+      position: static;
+    }
+
+    @media (min-width: 1024px) {
+      .container {
+        flex-direction: row;
+        gap: 3.5rem;
+        padding-top: 4rem;
+      }
+      .sidebar {
+        width: 300px;
+        flex-shrink: 0;
+        margin-bottom: 0;
+      }
+      .sidebar-sticky {
+        position: sticky;
+        top: 3rem;
+        max-height: calc(100vh - 6rem);
+        overflow-y: auto;
+        padding-right: 0.5rem;
+      }
+      /* Hide scrollbar on sidebar but keep scrollability */
+      .sidebar-sticky::-webkit-scrollbar {
+        width: 4px;
+      }
+      .sidebar-sticky::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    /* Brand Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+    .logo-icon {
+      color: var(--accent);
+      filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Progress Widget */
+    .progress-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(12px);
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .progress-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .progress-percentage {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+    .progress-bar-bg {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--cyan) 100%);
+      width: 0%;
+      border-radius: 3px;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* IP Configurations Widget */
+    .ip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(12px);
+    }
+    .ip-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+    }
+    .ip-label svg {
+      color: var(--accent);
+    }
+    .ip-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #fff;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .ip-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+    }
+    .ip-hint {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      line-height: 1.35;
+    }
+
+    /* Navigation list */
+    .sidebar-nav {
+      margin-top: 2rem;
+    }
+    .nav-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      padding-left: 0.5rem;
+    }
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      padding: 0.65rem 0.75rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .sidebar-link:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .sidebar-link.active {
+      color: var(--accent-hover);
+      background: rgba(99, 102, 241, 0.06);
+      font-weight: 600;
+    }
+    .sidebar-link.completed {
+      color: var(--success);
+    }
+    .sidebar-cb {
+      margin-right: 0.75rem;
+      cursor: pointer;
+      accent-color: var(--success);
+      width: 14px;
+      height: 14px;
+    }
+    .nav-step {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      padding: 0.1em 0.4em;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      margin-right: 0.6rem;
+    }
+    .sidebar-link.active .nav-step {
+      background: rgba(99, 102, 241, 0.15);
+    }
+    .sidebar-link.completed .nav-step {
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .nav-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      max-width: 100%;
+    }
+    @media (min-width: 1024px) {
+      .main {
+        max-width: 820px;
+      }
+    }
+
+    /* Header Section */
+    .header {
+      padding-bottom: 2.5rem;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .header .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+    }
+    .header h1 {
+      font-family: var(--font-display);
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .header .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 620px;
+      line-height: 1.6;
+    }
+
+    .spec-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    .spec-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.4rem 0.8rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+    .spec-chip:hover {
+      background: rgba(99, 102, 241, 0.04);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: var(--text);
+    }
+    .spec-chip strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .chip-icon {
+      color: var(--accent);
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Steps Cards */
+    .steps-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2.5rem;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      scroll-margin-top: 5rem;
+    }
+    
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: transparent;
+      transition: background 0.3s ease;
+    }
+
+    .step-card:hover {
+      border-color: rgba(99, 102, 241, 0.25);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px 0 rgba(99, 102, 241, 0.03);
+      transform: translateY(-2px);
+    }
+
+    .step-card.completed {
+      border-color: rgba(16, 185, 129, 0.25);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.4), 0 0 20px 0 rgba(16, 185, 129, 0.02);
+    }
+    .step-card.completed::before {
+      background: var(--success);
+    }
+
+    .step-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .step-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+    
+    .step-card.completed .step-badge {
+      color: var(--success);
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.15);
+    }
+
+    /* Custom Checkbox on step cards */
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+      font-weight: 500;
+    }
+    .checkbox-container:hover {
+      color: var(--text);
+    }
+    .checkbox-container input {
+      display: none;
+    }
+    .checkmark {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--text-muted);
+      border-radius: 4px;
+      position: relative;
+      transition: all 0.2s ease;
+      background: transparent;
+    }
+    .checkbox-container:hover .checkmark {
+      border-color: var(--text);
+    }
+    .checkbox-container input:checked + .checkmark {
+      background-color: var(--success);
+      border-color: var(--success);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+    }
+    .checkbox-container input:checked + .checkmark::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 7px;
+      border: solid #090a10;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .step-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .step-card p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.6;
+    }
+
+    /* Alerts and Notes */
+    .note-box {
+      font-size: 0.85rem;
+      border-radius: 8px;
+      padding: 0.85rem 1.15rem;
+      margin: 1.25rem 0;
+      display: flex;
+      gap: 0.75rem;
+      line-height: 1.5;
+    }
+    
+    .note-box.warning {
+      color: var(--warn);
+      background: var(--warn-glow);
+      border-left: 3px solid var(--warn);
+    }
+    .note-box.success {
+      color: var(--success);
+      background: var(--success-glow);
+      border-left: 3px solid var(--success);
+    }
+    .note-box.info {
+      color: var(--accent-hover);
+      background: var(--accent-glow);
+      border-left: 3px solid var(--accent);
+    }
+    
+    .note-icon {
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    /* Code Blocks styling */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 1rem 0;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      background: rgba(17, 20, 36, 0.8);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .mac-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .mac-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .mac-dot.red { background: #ff5f56; }
+    .mac-dot.yellow { background: #ffbd2e; }
+    .mac-dot.green { background: #27c93f; }
+
+    .copy-btn {
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: #fff;
+      background: rgba(99, 102, 241, 0.08);
+    }
+    .copy-btn.copied {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .code-block pre {
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #d8dee9;
+    }
+
+    /* Monospace Text Elements */
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.82em;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.18em 0.4em;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--accent-hover);
+    }
+
+    /* Syntax Highlighting */
+    .comment { color: #607293; font-style: italic; }
+    .env-var { color: #f59e0b; font-weight: 500; }
+    .command { color: #818cf8; }
+    .url { color: #06b6d4; text-decoration: underline; }
+    .keyword { color: #a78bfa; }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th {
+      padding: 0.75rem 1rem;
+      background: rgba(20, 24, 43, 0.8);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: rgba(99, 102, 241, 0.02);
+    }
+    td:first-child {
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--accent-hover);
+    }
+
+    /* Backdrop for mobile drawer */
+    .sidebar-backdrop {
+      display: none;
+    }
+
+    /* Troubleshooting custom styling */
+    .troubleshooting-card {
+      border-color: rgba(239, 68, 68, 0.15);
+    }
+    .troubleshooting-card:hover {
+      border-color: rgba(239, 68, 68, 0.25);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px 0 rgba(239, 68, 68, 0.02);
+    }
+    .step-badge.error {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.15);
+    }
+    .troubleshoot-item {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      padding-bottom: 1.5rem;
+    }
+    .troubleshoot-item:last-child {
+      margin-bottom: 0;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .troubleshoot-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .troubleshoot-item ul {
+      list-style-type: none;
+      padding-left: 0.5rem;
+    }
+    .troubleshoot-item li {
+      position: relative;
+      padding-left: 1.25rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .troubleshoot-item li::before {
+      content: "•";
+      color: var(--accent);
+      font-size: 1.2rem;
+      position: absolute;
+      left: 0.25rem;
+      top: -0.1rem;
+    }
+
+    /* Quick Ref Custom styling */
+    .quick-ref-card {
+      border-color: rgba(6, 182, 212, 0.15);
+    }
+    .quick-ref-card:hover {
+      border-color: rgba(6, 182, 212, 0.25);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px 0 rgba(6, 182, 212, 0.02);
+    }
+    .step-badge.info {
+      color: var(--cyan);
+      background: rgba(6, 182, 212, 0.1);
+      border-color: rgba(6, 182, 212, 0.15);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .footer-divider {
+      color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+      }
+      50% {
+        opacity: 0.8;
+        filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.1));
+      }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1023px) {
+      .container {
+        padding-top: 5rem;
+      }
+      
+      .mobile-progress-bar {
+        display: block;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 52px;
+        left: -100%;
+        width: 300px;
+        height: calc(100vh - 52px);
+        background: #090a10;
+        border-right: 1px solid var(--border);
+        z-index: 999;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 1.5rem;
+        overflow-y: auto;
+        margin-bottom: 0;
+      }
+      
+      .sidebar.show {
+        left: 0;
+      }
+      
+      .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        top: 52px;
+        left: 0;
+        width: 100vw;
+        height: calc(100vh - 52px);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 998;
+      }
+      
+      .sidebar-backdrop.show {
+        display: block;
+      }
+
+      .logo {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .step-card {
+        padding: 1.25rem;
+      }
+      .header h1 {
+        font-size: 1.75rem;
+      }
+      .spec-bar {
+        gap: 0.5rem;
+      }
+      .spec-chip {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.7rem;
+      }
+      .code-block pre {
+        font-size: 0.78rem;
+        padding: 0.85rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Sticky Progress Bar -->
+  <div class="mobile-progress-bar">
+    <div class="mobile-progress-inner">
+      <div class="mobile-logo">
+        <svg class="logo-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5v14M22 9v6M7 5v14M2 9v6"></path>
+        </svg>
+        <span>VieNeu-TTS VPS</span>
+      </div>
+      <div class="mobile-progress-text" id="mobile-progress-text">0% Hoàn thành</div>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="mobile-progress-track">
+      <div id="mobile-progress-fill" class="mobile-progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <div class="container">
+    
+    <!-- Sidebar / Left Panel -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-sticky">
+        
+        <!-- Logo -->
+        <div class="logo">
+          <svg class="logo-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5v14M22 9v6M7 5v14M2 9v6"></path>
+          </svg>
+          <span class="logo-text">VieNeu-TTS Guide</span>
+        </div>
+        
+        <!-- Progress Widget -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <span class="progress-title">Tiến trình</span>
+            <span id="progress-text" class="progress-percentage">0% Hoàn thành</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="progress-fill" class="progress-bar-fill"></div>
+          </div>
+        </div>
+        
+        <!-- VPS IP Config Widget -->
+        <div class="ip-card">
+          <label for="vps-ip-input" class="ip-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+              <line x1="6" y1="6" x2="6.01" y2="6"></line>
+              <line x1="6" y1="18" x2="6.01" y2="18"></line>
+            </svg>
+            Nhập IP VPS của bạn
+          </label>
+          <input type="text" id="vps-ip-input" class="ip-input" value="209.121.195.118" placeholder="Nhập IP VPS...">
+          <span class="ip-hint">Đường dẫn giao diện Web và các dòng lệnh bên dưới sẽ tự động thay đổi theo IP này.</span>
+        </div>
+        
+        <!-- Checklist Navigation -->
+        <nav class="sidebar-nav">
+          <div class="nav-title">Các bước thiết lập</div>
+          <ul class="nav-list">
+            <li>
+              <a href="#step-0" class="sidebar-link" id="sidebar-step-0">
+                <input type="checkbox" class="sidebar-cb" id="scb-0">
+                <span class="nav-step">B0</span>
+                <span class="nav-name">Mở Terminal</span>
+              </a>
+            </li>
+            <li>
+              <a href="#step-1" class="sidebar-link" id="sidebar-step-1">
+                <input type="checkbox" class="sidebar-cb" id="scb-1">
+                <span class="nav-step">B1</span>
+                <span class="nav-name">Kiểm tra GPU</span>
+              </a>
+            </li>
+            <li>
+              <a href="#step-2" class="sidebar-link" id="sidebar-step-2">
+                <input type="checkbox" class="sidebar-cb" id="scb-2">
+                <span class="nav-step">B2</span>
+                <span class="nav-name">Cài Build Tools & UV</span>
+              </a>
+            </li>
+            <li>
+              <a href="#step-3" class="sidebar-link" id="sidebar-step-3">
+                <input type="checkbox" class="sidebar-cb" id="scb-3">
+                <span class="nav-step">B3</span>
+                <span class="nav-name">Clone & Cài đặt</span>
+              </a>
+            </li>
+            <li>
+              <a href="#step-4" class="sidebar-link" id="sidebar-step-4">
+                <input type="checkbox" class="sidebar-cb" id="scb-4">
+                <span class="nav-step">B4</span>
+                <span class="nav-name">Khởi chạy Server</span>
+              </a>
+            </li>
+            <li>
+              <a href="#step-5" class="sidebar-link" id="sidebar-step-5">
+                <input type="checkbox" class="sidebar-cb" id="scb-5">
+                <span class="nav-step">B5</span>
+                <span class="nav-name">Mở Web sử dụng</span>
+              </a>
+            </li>
+            <li>
+              <a href="#troubleshoot" class="sidebar-link" id="sidebar-step-troubleshoot">
+                <span class="nav-step">Lỗi</span>
+                <span class="nav-name">Khắc phục sự cố</span>
+              </a>
+            </li>
+            <li>
+              <a href="#quick-ref" class="sidebar-link" id="sidebar-step-quick-ref">
+                <span class="nav-step">Chạy nhanh</span>
+                <span class="nav-name">Khởi động nhanh</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+        
+      </div>
+    </aside>
+
+    <!-- Main Panel -->
+    <main class="main">
+      
+      <!-- Top header content -->
+      <div class="header">
+        <div class="eyebrow">Tài liệu Setup</div>
+        <h1>VieNeu-TTS trên VPS GPU</h1>
+        <p class="subtitle">Hướng dẫn từng bước cài đặt và cấu hình hệ thống tổng hợp giọng nói VieNeu-TTS (hỗ trợ chuyển đổi SRT sang Audio đồng bộ hóa timeline) trên máy chủ ảo GPU thuê. Chỉ cần copy và paste lệnh.</p>
+        
+        <div class="spec-bar">
+          <span class="spec-chip" title="Dòng card đồ họa khuyến nghị">
+            <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="15" x2="23" y2="15"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="15" x2="4" y2="15"></line></svg>
+            <strong>GPU</strong> RTX 3090
+          </span>
+          <span class="spec-chip" title="Docker image cơ sở">
+            <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            <strong>Base</strong> pytorch/pytorch:latest
+          </span>
+          <span class="spec-chip" title="Hệ điều hành máy chủ">
+            <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <strong>OS</strong> Linux (Ubuntu)
+          </span>
+          <span class="spec-chip" title="Cổng mạng được mở">
+            <svg class="chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="16" y="16" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="9" y="2" width="6" height="6" rx="1"></rect><path d="M12 8v8M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path></svg>
+            <strong>Port</strong> 8999 (Exposed)
+          </span>
+        </div>
+      </div>
+
+      <!-- Step Cards Content -->
+      <div class="steps-container">
+        
+        <!-- STEP 0 -->
+        <section id="step-0" class="step-card">
+          <div class="step-card-header">
+            <span class="step-badge">BƯỚC 0</span>
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-0" class="step-checkbox">
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Đã xong</span>
+            </label>
+          </div>
+          <h2>Mở cửa sổ dòng lệnh (Terminal)</h2>
+          <p>Trên giao diện điều khiển JupyterLab của máy chủ ảo GPU (ví dụ: Vast.ai, RunPod, ...), hãy nhìn xuống mục <strong>"Other"</strong> ở phía dưới và click vào nút <strong>Terminal</strong>. Một cửa sổ dòng lệnh nền đen sẽ mở ra.</p>
+          
+          <div class="note-box info">
+            <svg class="note-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <div>
+              Tất cả các dòng lệnh trong hướng dẫn này sẽ được thực thi trực tiếp tại cửa sổ Terminal này. Hãy copy chính xác và paste để chạy.
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 1 -->
+        <section id="step-1" class="step-card">
+          <div class="step-card-header">
+            <span class="step-badge">BƯỚC 1</span>
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-1" class="step-checkbox">
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Đã xong</span>
+            </label>
+          </div>
+          <h2>Kiểm tra tình trạng hoạt động của GPU</h2>
+          <p>Đảm bảo máy chủ ảo của bạn đã nhận diện đầy đủ phần cứng card đồ họa (GPU) và driver CUDA hoạt động bình thường.</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>terminal</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">nvidia-smi</span></pre>
+          </div>
+          
+          <div class="note-box success">
+            <svg class="note-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <div>
+              Nếu màn hình hiển thị tên dòng GPU (ví dụ: RTX 3090, RTX 4090) cùng với phiên bản CUDA đi kèm là hệ thống đã sẵn sàng.
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 2 -->
+        <section id="step-2" class="step-card">
+          <div class="step-card-header">
+            <span class="step-badge">BƯỚC 2</span>
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-2" class="step-checkbox">
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Đã xong</span>
+            </label>
+          </div>
+          <h2>Cài đặt Build Tools & Trình quản lý gói UV</h2>
+          <p>Cài đặt các thư viện hệ thống cần thiết để biên dịch (build) mã nguồn Python và công cụ quản lý gói siêu tốc <code>uv</code>. Hãy sao chép và chạy lần lượt từng dòng lệnh dưới đây.</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>1. Cài đặt các công cụ biên dịch</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">apt-get</span> update && <span class="command">apt-get</span> install -y build-essential cmake</pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>2. Xóa cấu hình CC cũ (Tránh lỗi build llama-cpp)</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">unset</span> CC CXX</pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>3. Cài đặt trình quản lý gói UV</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">curl</span> -LsSf <span class="url">https://astral.sh/uv/install.sh</span> | <span class="command">sh</span> && <span class="command">source</span> ~/.bashrc</pre>
+          </div>
+        </section>
+
+        <!-- STEP 3 -->
+        <section id="step-3" class="step-card">
+          <div class="step-card-header">
+            <span class="step-badge">BƯỚC 3</span>
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-3" class="step-checkbox">
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Đã xong</span>
+            </label>
+          </div>
+          <h2>Tải mã nguồn (Clone Repo) và cài đặt thư viện</h2>
+          <p>Truy cập vào thư mục làm việc, tải mã nguồn VieNeu-TTS về và tự động cài đặt tất cả các gói phụ thuộc hỗ trợ tăng tốc trên GPU đồ họa.</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>1. Clone kho lưu trữ</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">cd</span> /workspace && <span class="command">git clone</span> <span class="url">https://github.com/pnnbao97/VieNeu-TTS.git</span> voice_tts && <span class="command">cd</span> voice_tts</pre>
+          </div>
+
+          <div class="note-box warning">
+            <svg class="note-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <div>
+              Nếu bạn đang sử dụng kho lưu trữ (repository) riêng tư có mã nguồn xử lý SRT tùy biến, hãy thay liên kết trên thành liên kết repo của bạn:<br>
+              <code>git clone https://github.com/TÊN_USER/TÊN_REPO.git voice_tts</code>
+            </div>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>2. Đồng bộ hóa gói phụ thuộc GPU qua UV</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">uv sync</span> --group gpu</pre>
+          </div>
+          
+          <p>Quá trình cài đặt thư viện này có thể mất từ 5 đến 15 phút tùy thuộc vào hiệu năng mạng của máy chủ. Hãy kiên nhẫn đợi cho đến khi Terminal thông báo dòng chữ <code>Installed ... packages</code>.</p>
+        </section>
+
+        <!-- STEP 4 -->
+        <section id="step-4" class="step-card">
+          <div class="step-card-header">
+            <span class="step-badge">BƯỚC 4</span>
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-4" class="step-checkbox">
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Đã xong</span>
+            </label>
+          </div>
+          <h2>Khởi chạy VieNeu-TTS (Tối ưu hóa RTX 3090)</h2>
+          <p>Thiết lập biến môi trường và chạy dịch vụ web tổng hợp giọng nói. Lệnh này đã được cấu hình tối đa hóa hiệu năng cho card RTX 3090 (24GB VRAM).</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>Chạy máy chủ (Copy toàn bộ khối này)</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="env-var">GRADIO_SERVER_NAME</span>=0.0.0.0 \
+<span class="env-var">GRADIO_SERVER_PORT</span>=8999 \
+<span class="env-var">LMDEPLOY_MEMORY_UTIL</span>=0.8 \
+<span class="env-var">LMDEPLOY_PREFIX_CACHING</span>=1 \
+<span class="env-var">LMDEPLOY_MAX_BATCH_SIZE</span>=8 \
+<span class="command">uv run vieneu-web</span></pre>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Biến cấu hình</th>
+                  <th>Giá trị</th>
+                  <th>Ý nghĩa chi tiết</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>MEMORY_UTIL</td>
+                  <td>0.8</td>
+                  <td>Sử dụng 80% bộ nhớ GPU (~19.2GB VRAM) làm cache KV giúp tăng tốc đáng kể tốc độ suy luận.</td>
+                </tr>
+                <tr>
+                  <td>PREFIX_CACHING</td>
+                  <td>1</td>
+                  <td>Kích hoạt bộ nhớ đệm tiền tố (Prefix Caching) cho giọng nói mẫu, tăng tốc khi tái sử dụng cùng giọng nói.</td>
+                </tr>
+                <tr>
+                  <td>MAX_BATCH_SIZE</td>
+                  <td>8</td>
+                  <td>Xử lý song song tối đa 8 yêu cầu đồng thời (cực kỳ hữu ích khi tổng hợp file phụ đề SRT chứa nhiều câu ngắn).</td>
+                </tr>
+                <tr>
+                  <td>SERVER_PORT</td>
+                  <td>8999</td>
+                  <td>Cổng dịch vụ đã được mở (expose) của VPS để truy cập ra mạng Internet bên ngoài.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>Khi quá trình tải mô hình và tối ưu hóa kết thúc thành công, bạn sẽ thấy Terminal in ra dòng chữ:</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <span>Dòng trạng thái thành công mong đợi</span>
+              </div>
+            </div>
+            <pre><span class="comment">* Running on local URL:  http://0.0.0.0:8999</span>
+<span class="comment">   ✅ Optimized backend initialized</span></pre>
+          </div>
+        </section>
+
+        <!-- STEP 5 -->
+        <section id="step-5" class="step-card">
+          <div class="step-card-header">
+            <span class="step-badge">BƯỚC 5</span>
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-5" class="step-checkbox">
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Đã xong</span>
+            </label>
+          </div>
+          <h2>Mở trang web giao diện và sử dụng</h2>
+          <p>Sau khi máy chủ khởi chạy thành công, hãy mở một thẻ trình duyệt web mới và truy cập vào đường dẫn giao diện bên dưới:</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>Đường dẫn truy cập web (tự động cập nhật theo IP nhập bên trái)</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="url code-ip-display">http://209.121.195.118:12018</span></pre>
+          </div>
+
+          <p>Giao diện điều khiển trực quan Gradio sẽ hiện ra với các thẻ chức năng chính:</p>
+          
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Thẻ chức năng (Tab)</th>
+                  <th>Mô tả hoạt động chi tiết</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Text to Speech</td>
+                  <td>Nhập đoạn văn bản tùy ý tiếng Việt/tiếng Anh, chọn giọng mẫu sẵn có hoặc tùy chỉnh để tạo âm thanh tức thì.</td>
+                </tr>
+                <tr>
+                  <td>Voice Cloning</td>
+                  <td>Tải lên một file âm thanh mẫu ngắn (3 đến 5 giây) để nhân bản giọng đọc đó và lưu lại sử dụng.</td>
+                </tr>
+                <tr>
+                  <td>SRT &rarr; Audio</td>
+                  <td>Dán nội dung file phụ đề SRT vào để hệ thống tự động sinh các file âm thanh khớp thời gian hiển thị phụ đề.</td>
+                </tr>
+                <tr>
+                  <td>Podcast</td>
+                  <td>Thiết lập hội thoại nói chuyện/phỏng vấn qua lại giữa nhiều nhân vật có giọng nói khác nhau.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- TROUBLESHOOTING -->
+        <section id="troubleshoot" class="step-card troubleshooting-card">
+          <div class="step-card-header">
+            <span class="step-badge error">HƯỚNG DẪN LỖI</span>
+          </div>
+          <h2>Khắc phục khi gặp sự cố hoặc lỗi phát sinh</h2>
+          <p>Nếu trong quá trình vận hành xảy ra lỗi, bạn có thể nhanh chóng xử lý theo các bước sau:</p>
+
+          <div class="troubleshoot-item">
+            <div class="troubleshoot-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Lỗi hết bộ nhớ đồ họa "Out of Memory" (OOM)
+            </div>
+            <p>Trường hợp xảy ra khi chạy các mô hình lớn hoặc trên cấu hình GPU VRAM thấp hơn 24GB. Hãy hạ tỷ lệ chiếm dụng VRAM (<code>LMDEPLOY_MEMORY_UTIL</code>) xuống 0.5 và giảm batch size bằng lệnh sau:</p>
+            <div class="code-block">
+              <div class="code-header">
+                <div class="code-title">
+                  <span>terminal — chạy lại với VRAM thấp hơn</span>
+                </div>
+                <button class="copy-btn" onclick="copyCode(this)">
+                  <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span class="copy-text">Copy</span>
+                </button>
+              </div>
+              <pre><span class="env-var">GRADIO_SERVER_NAME</span>=0.0.0.0 \
+<span class="env-var">GRADIO_SERVER_PORT</span>=8999 \
+<span class="env-var">LMDEPLOY_MEMORY_UTIL</span>=0.5 \
+<span class="env-var">LMDEPLOY_PREFIX_CACHING</span>=1 \
+<span class="env-var">LMDEPLOY_MAX_BATCH_SIZE</span>=4 \
+<span class="command">uv run vieneu-web</span></pre>
+            </div>
+          </div>
+
+          <div class="troubleshoot-item">
+            <div class="troubleshoot-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Lỗi cổng mạng đang bị chiếm dụng "Port already in use"
+            </div>
+            <p>Xảy ra khi tiến trình của VieNeu-TTS chạy ngầm hoặc chưa được giải phóng hoàn toàn từ phiên làm việc trước. Hãy sử dụng lệnh sau để cưỡng chế dừng toàn bộ tiến trình VieNeu-TTS đang chạy:</p>
+            <div class="code-block">
+              <div class="code-header">
+                <div class="code-title">
+                  <span>terminal — tắt toàn bộ tiến trình vieneu-web</span>
+                </div>
+                <button class="copy-btn" onclick="copyCode(this)">
+                  <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span class="copy-text">Copy</span>
+                </button>
+              </div>
+              <pre><span class="command">pkill</span> -9 -f vieneu-web</pre>
+            </div>
+            <p>Hoặc giải phóng trực tiếp bằng cách dọn cổng 8999:</p>
+            <div class="code-block">
+              <div class="code-header">
+                <div class="code-title">
+                  <span>terminal — giải phóng cổng 8999</span>
+                </div>
+                <button class="copy-btn" onclick="copyCode(this)">
+                  <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span class="copy-text">Copy</span>
+                </button>
+              </div>
+              <pre><span class="command">fuser</span> -k 8999/tcp</pre>
+            </div>
+          </div>
+
+          <div class="troubleshoot-item">
+            <div class="troubleshoot-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Lỗi build gói "llama-cpp-python"
+            </div>
+            <p>Nếu quá trình <code>uv sync</code> gặp lỗi build, hãy đảm bảo bạn đã chạy hai lệnh chuẩn bị này trước để cài đặt gói cmake cần thiết và reset biến môi trường biên dịch cũ:</p>
+            <div class="code-block">
+              <div class="code-header">
+                <div class="code-title">
+                  <span>terminal — sửa lỗi build</span>
+                </div>
+                <button class="copy-btn" onclick="copyCode(this)">
+                  <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span class="copy-text">Copy</span>
+                </button>
+              </div>
+              <pre><span class="command">apt-get</span> update && <span class="command">apt-get</span> install -y build-essential cmake
+<span class="command">unset</span> CC CXX</pre>
+            </div>
+          </div>
+
+          <div class="troubleshoot-item">
+            <div class="troubleshoot-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              Một số phím tắt cơ bản
+            </div>
+            <ul>
+              <li><strong>Muốn dừng server đang chạy:</strong> Nhấn tổ hợp phím <code>Ctrl + C</code> ngay tại cửa sổ Terminal đang chạy máy chủ.</li>
+              <li><strong>Muốn khởi chạy lại sau khi đã dừng:</strong> Bạn chỉ cần chuyển hướng vào đúng thư mục dự án và thực hiện lại bước chạy máy chủ (Bước 4).</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- QUICK REFERENCE -->
+        <section id="quick-ref" class="step-card quick-ref-card">
+          <div class="step-card-header">
+            <span class="step-badge info">TÓM TẮT NHANH</span>
+          </div>
+          <h2>Lệnh chạy nhanh (áp dụng cho những lần sau)</h2>
+          <p>Khi bạn đã hoàn thành cài đặt toàn bộ hệ thống ở các bước trên, ở những lần tiếp theo khi khởi động lại VPS, bạn không cần phải làm lại từ đầu. Chỉ cần mở Terminal lên và thực hiện một dòng lệnh gộp duy nhất bên dưới:</p>
+          
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-title">
+                <div class="mac-dots">
+                  <div class="mac-dot red"></div>
+                  <div class="mac-dot yellow"></div>
+                  <div class="mac-dot green"></div>
+                </div>
+                <span>terminal — khởi chạy nhanh</span>
+              </div>
+              <button class="copy-btn" onclick="copyCode(this)">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span class="copy-text">Copy</span>
+              </button>
+            </div>
+            <pre><span class="command">cd</span> /workspace/voice_tts && <span class="env-var">GRADIO_SERVER_NAME</span>=0.0.0.0 <span class="env-var">GRADIO_SERVER_PORT</span>=8999 <span class="env-var">LMDEPLOY_MEMORY_UTIL</span>=0.8 <span class="env-var">LMDEPLOY_PREFIX_CACHING</span>=1 <span class="env-var">LMDEPLOY_MAX_BATCH_SIZE</span>=8 <span class="command">uv run vieneu-web</span></pre>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <div>VieNeu-TTS Setup Guide &bull; Tối ưu hóa GPU RTX 3090</div>
+        <div>Cập nhật ngày 25/06/2026</div>
+      </footer>
+
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const checkboxes = document.querySelectorAll('.step-checkbox');
+      const progressFill = document.getElementById('progress-fill');
+      const progressText = document.getElementById('progress-text');
+      const mobileProgressFill = document.getElementById('mobile-progress-fill');
+      const mobileProgressText = document.getElementById('mobile-progress-text');
+      const sidebarLinks = document.querySelectorAll('.sidebar-link');
+      const steps = document.querySelectorAll('.step-card');
+      const ipInput = document.getElementById('vps-ip-input');
+      const menuToggle = document.getElementById('mobile-menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      
+      // Update IP across code blocks and URLs
+      function updateIPs(ipValue) {
+        const val = ipValue.trim() || '209.121.195.118';
+        document.querySelectorAll('.vps-ip-display').forEach(el => {
+          el.textContent = val;
+        });
+        document.querySelectorAll('.code-ip-display').forEach(el => {
+          el.textContent = `http://${val}:12018`;
+        });
+      }
+      
+      if (ipInput) {
+        ipInput.addEventListener('input', (e) => {
+          updateIPs(e.target.value);
+        });
+        // Initial setup
+        updateIPs(ipInput.value);
+      }
+
+      // Sidebar drawer controls on mobile
+      if (menuToggle && sidebar && backdrop) {
+        const toggleMenu = () => {
+          sidebar.classList.toggle('show');
+          backdrop.classList.toggle('show');
+        };
+        menuToggle.addEventListener('click', toggleMenu);
+        backdrop.addEventListener('click', toggleMenu);
+        
+        // Hide sidebar when link is clicked
+        sidebarLinks.forEach(link => {
+          link.addEventListener('click', () => {
+            if (window.innerWidth < 1024) {
+              sidebar.classList.remove('show');
+              backdrop.classList.remove('show');
+            }
+          });
+        });
+      }
+
+      // Check step complete functionality
+      function updateProgress() {
+        const total = checkboxes.length;
+        let checked = 0;
+        checkboxes.forEach((cb, idx) => {
+          const stepCard = document.getElementById(`step-${idx}`);
+          const sidebarItem = document.getElementById(`sidebar-step-${idx}`);
+          const sidebarCb = document.getElementById(`scb-${idx}`);
+          
+          if (cb.checked) {
+            checked++;
+            if (stepCard) stepCard.classList.add('completed');
+            if (sidebarItem) sidebarItem.classList.add('completed');
+            if (sidebarCb) sidebarCb.checked = true;
+          } else {
+            if (stepCard) stepCard.classList.remove('completed');
+            if (sidebarItem) sidebarItem.classList.remove('completed');
+            if (sidebarCb) sidebarCb.checked = false;
+          }
+        });
+        
+        const percentage = Math.round((checked / total) * 100);
+        
+        // Update progress indicators
+        if (progressFill) progressFill.style.width = `${percentage}%`;
+        if (progressText) progressText.textContent = `${percentage}% Hoàn thành`;
+        if (mobileProgressFill) mobileProgressFill.style.width = `${percentage}%`;
+        if (mobileProgressText) mobileProgressText.textContent = `${percentage}% Hoàn thành`;
+      }
+      
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateProgress);
+      });
+      
+      // Allow syncing sidebar checkboxes back to step checkboxes
+      const sidebarCbs = document.querySelectorAll('.sidebar-cb');
+      sidebarCbs.forEach((scb, idx) => {
+        scb.addEventListener('change', (e) => {
+          const mainCb = document.getElementById(`cb-${idx}`);
+          if (mainCb) {
+            mainCb.checked = e.target.checked;
+            updateProgress();
+          }
+        });
+      });
+
+      // Scroll Spy - Highlight current active step in sidebar
+      const observerOptions = {
+        root: null,
+        rootMargin: '-10% 0px -70% 0px',
+        threshold: 0
+      };
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            sidebarLinks.forEach(link => {
+              if (link.getAttribute('href') === `#${id}`) {
+                link.classList.add('active');
+              } else {
+                link.classList.remove('active');
+              }
+            });
+          }
+        });
+      }, observerOptions);
+      
+      steps.forEach(step => observer.observe(step));
+      
+      // Smooth scroll navigation
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetId = link.getAttribute('href');
+          const targetEl = document.querySelector(targetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    });
+
+    // Copy to clipboard function
+    function copyCode(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      const text = pre.innerText || pre.textContent;
+      
+      navigator.clipboard.writeText(text.trim()).then(() => {
+        const copyIcon = btn.querySelector('.copy-icon');
+        const checkIcon = btn.querySelector('.check-icon');
+        const copyText = btn.querySelector('.copy-text');
+        
+        if (copyIcon) copyIcon.style.display = 'none';
+        if (checkIcon) checkIcon.style.display = 'inline-block';
+        if (copyText) copyText.textContent = 'Đã chép!';
+        
+        btn.classList.add('copied');
+        
+        setTimeout(() => {
+          if (copyIcon) copyIcon.style.display = 'inline-block';
+          if (checkIcon) checkIcon.style.display = 'none';
+          if (copyText) copyText.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1800);
+      });
+    }
+  </script>
+</body>
+</html>

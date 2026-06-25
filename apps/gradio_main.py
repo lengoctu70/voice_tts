@@ -46,6 +46,28 @@ from apps.ui_constants import (
     DEFAULT_TEXT_V3
 )
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        print(f"⚠️ Invalid {name}={raw!r}, using default {default}")
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"⚠️ Invalid {name}={raw!r}, using default {default}")
+        return default
+
+
 # --- CONSTANTS & CONFIG ---
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
 try:
@@ -458,10 +480,11 @@ def load_model(backbone_choice: str, codec_choice: str, device_choice: str,
                     backbone_device=backbone_device,
                     codec_repo=codec_config["repo"],
                     codec_device=codec_device,
-                    memory_util=0.3,
+                    memory_util=_env_float("LMDEPLOY_MEMORY_UTIL", 0.3),
                     tp=1,
-                    enable_prefix_caching=False,
+                    enable_prefix_caching=os.environ.get("LMDEPLOY_PREFIX_CACHING", "0") == "1",
                     enable_triton=True,
+                    max_batch_size=_env_int("LMDEPLOY_MAX_BATCH_SIZE", 4),
                     hf_token=custom_hf_token
                 )
                 using_lmdeploy = True
