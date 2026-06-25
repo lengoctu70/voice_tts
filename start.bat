@@ -174,6 +174,79 @@ if "!CHOICE!"=="1" (
 echo.
 
 :: =============================================================
+::  BUOC 3b: Kiem tra CUDA Toolkit (GPU mode)
+:: =============================================================
+if "!MODE!"=="gpu" (
+    echo [3b/6] Kiem tra NVIDIA CUDA Toolkit...
+    echo.
+
+    set "CUDA_OK=0"
+    if defined CUDA_PATH (
+        if exist "!CUDA_PATH!\bin\nvcc.exe" (
+            set "CUDA_OK=1"
+            for /f "tokens=5" %%v in ('"!CUDA_PATH!\bin\nvcc.exe" --version 2^>^&1 ^| findstr "release"') do (
+                echo   [OK] CUDA Toolkit %%v
+            )
+        )
+    )
+
+    if "!CUDA_OK!"=="0" (
+        echo   [!] Chua cai NVIDIA CUDA Toolkit!
+        echo       LMDeploy can CUDA Toolkit de toi uu toc do cho v2/v1.
+        echo       (Neu khong cai, model van chay duoc nhung CHAM hon)
+        echo.
+        echo   Ban muon tu dong cai CUDA Toolkit 12.8 khong?
+        echo     [1] Co - Tu dong tai va cai CUDA Toolkit 12.8 (~3 GB, can Admin)
+        echo     [2] Khong - Bo qua, chay voi backend cham hon
+        echo.
+        set "CUDA_CHOICE="
+        set /p "CUDA_CHOICE=  Nhap lua chon (1 hoac 2): "
+
+        if "!CUDA_CHOICE!"=="1" (
+            echo.
+            echo   Dang kiem tra winget...
+            where winget >nul 2>&1
+            if not errorlevel 1 (
+                echo   Dang cai CUDA Toolkit 12.8 qua winget...
+                echo   (Can quyen Admin - co the hien hop UAC)
+                echo.
+                winget install Nvidia.CUDA --version 12.8 --accept-package-agreements --accept-source-agreements
+                if errorlevel 1 (
+                    echo.
+                    echo   [!] Winget that bai. Thu tai truc tiep...
+                    goto :CUDA_MANUAL_DL
+                )
+                echo.
+                echo   [OK] CUDA Toolkit da cai xong!
+                echo   [!] BAN CAN KHOI DONG LAI MAY TINH de CUDA_PATH co hieu luc.
+                echo       Sau khi restart, chay lai start.bat.
+                echo.
+                pause
+                exit /b 0
+            ) else (
+                :CUDA_MANUAL_DL
+                echo   Winget khong co san. Dang mo trang tai CUDA Toolkit...
+                echo.
+                start "" "https://developer.nvidia.com/cuda-12-8-0-download-archive"
+                echo   [!] Trinh duyet da mo trang tai CUDA Toolkit.
+                echo       1. Chon: Windows ^> x86_64 ^> 10 ^> exe (local)
+                echo       2. Tai va cai dat
+                echo       3. Khoi dong lai may tinh
+                echo       4. Chay lai start.bat
+                echo.
+                pause
+                exit /b 0
+            )
+        ) else (
+            echo.
+            echo   ^>^> Bo qua CUDA Toolkit. LMDeploy se khong hoat dong.
+            echo      Model van chay duoc voi standard backend (cham hon).
+        )
+    )
+    echo.
+)
+
+:: =============================================================
 ::  BUOC 4: Cai dat dependencies
 :: =============================================================
 echo [4/6] Kiem tra va cai dat dependencies...
