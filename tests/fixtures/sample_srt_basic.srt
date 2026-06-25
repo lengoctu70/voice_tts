@@ -1,0 +1,11 @@
+1
+00:00:00,000 --> 00:00:01,000
+Đây là khối ngắn nên sẽ được padding.
+
+2
+00:00:02,000 --> 00:00:03,000
+Khối này hơi dài, cần speed-up trong giới hạn 1.25x.
+
+3
+00:00:04,000 --> 00:00:05,000
+Khối này quá dài, sẽ bị cắt cuối sau khi speed-up tới mức tối đa.
